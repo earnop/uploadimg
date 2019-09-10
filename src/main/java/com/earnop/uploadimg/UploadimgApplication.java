@@ -1,4 +1,4 @@
-package com.liuyangnop.uploadimg;
+package com.earnop.uploadimg;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
