@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1.0, user-scalable=0">
+    <!-- 上述3个meta标签*必须*放在最前面，任何其他内容都*必须*跟随其后！ -->
+    <meta charset="UTF-8">
+    <title>图片上传demo</title>
+    <!-- Bootstrap -->
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet">
+    <!-- jQuery -->
+    <script th:src="@{/js/jquery-3.2.1.min.js}"></script>
+    <!-- 加载 Bootstrap 的所有 JavaScript 插件。 -->
+    <script th:src="@{/js/bootstrap.min.js}"></script>
+    <style>
+        .uploadimg-out-div{
+            position:relative;
+            width:100%;
+        }
+        .uploadimg-input{
+            position: absolute;
+            left:0;
+            top:0;
+            opacity:0;
+            filter:alpha(opacity=0);
+            z-index: 6;
+            padding:0px 0px 0px 0px;
+        }
+        .uploadimg-p{
+            position: absolute;
+            margin: 0 auto;
+            width:100%;
+            height:30px;
+            text-align: center;
+            padding-top:6px;
+            left:10px;
+        }
+    </style>
+</head>
+<body>
+<!-- 上传图片开始 -->
+<div style="margin: 10px 10px 0 10px;">
+    <ul class="nav nav-tabs">
+        <li role="presentation" class="active"><a href="#">上传图片</a></li>
+    </ul>
+    <div class="control-group uploadimg-out-div" id="div-licenceimg" style="width:100%;text-align: center;">
+        <div id="preview-bussinessLicence" style="width:100%">
+            <img th:src="@{/img/upimg.png}" class="uploadimg-img input-group">
+        </div>
+        <input type="file" id="bussinessLicence" class="uploadimg-input" onchange="preview(this)"  accept="image/*"/>
+		<p class="uploadimg-p" id="fileNameP"></p>
+	</div>
+</div>
+<!-- 上传图片结束 -->
+</body>
+<script  inline="javascript">
+    $(function() {
+        var a = changeInputFileSize;
+        a();
+    })
+
+    var bl="",theFile;
+    function preview(file) {
+        /*获取图片对应的父节点*/
+        var thisEveId = file.id;
+        var pervDivId = "preview-" + thisEveId;
+        var prevDiv = document.getElementById(pervDivId);
+        /*获取文件*/
+        theFile = file.files[0];
+		var fileName = theFile.name;
+        console.log("压缩前：" + theFile.size / 1024 + "k");
+        //var width = file.files[0].width;
+        if(undefined == theFile){
+            console.log("theFile == undefined");
+            return ;
+        }
+		 $("#fileNameP").text(fileName);
+        if(theFile.size/1024 > 100) { //大于1M，进行压缩上传
+            console.log("theFile.size/1024 > 100");
+            photoCompress(theFile, {
+                quality: 0.7
+            }, function(base64Codes){
+                console.log("压缩后：" + base64Codes.length / 1024 + "k");
+                $("#"+pervDivId).children("img").attr("src", base64Codes);
+                $("#"+pervDivId).children("img").css("width", (window.innerWidth-40)+"px");
+                bl = convertBase64UrlToBlob(base64Codes);
+
+                uploadImg(bl,file.id);
+                console.log("bl:");
+                console.log(bl);
+            });
+        }else{
+            console.log("theFile.size/1024 <= 100");
+            var ready=new FileReader();
+            /*开始读取指定的Blob对象或File对象中的内容. 当读取操作完成时,readyState属性的值会成为DONE,如果设置了onloadend事件处理程序,则调用之.同时,result属性中将包含一个data: URL格式的字符串以表示所读取文件的内容.*/
+            ready.readAsDataURL(theFile);
+            ready.onload=function(){
+                var re=this.result;
+                console.log("ready.onload....this.result:");
+                console.log(this.result);
+                $("#"+pervDivId).children("img").attr("src", this.result);
+                $("#"+pervDivId).children("img").css("width", (window.innerWidth-40)+"px");
+                bl = convertBase64UrlToBlob(this.result);
+                uploadImg(bl,file.id);
+                console.log("bl:");
+                console.log(bl);
+            }
+        }
+        setTimeout("changeInputFileSize($('#"+pervDivId+"'))",500);
+
+    };
+    /**
+     *       用url方式表示的base64图片数据
+     */
+    function convertBase64UrlToBlob(urlData){
+        var arr = urlData.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while(n--){
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], {type:mime});
+    };
+    function photoCompress(file,w,objDiv){
+        var ready=new FileReader();
+        /*开始读取指定的Blob对象或File对象中的内容. 当读取操作完成时,readyState属性的值会成为DONE,
+        如果设置了onloadend事件处理程序,则调用之.
+        同时,result属性中将包含一个data: URL格式的字符串以表示所读取文件的内容.*/
+        ready.readAsDataURL(file);
+        ready.onload=function(){
+            var re=this.result;
+            canvasDataURL(re,w,objDiv)
+        }
+    };
+
+
+    /**
+     * 按比例缩放图片，通过canvas新生成图片并把新生成的图片转换为base64码返回
+     * @param path
+     * @param obj
+     * @param callback
+     */
+    function canvasDataURL(path, obj, callback){
+        var img = new Image();
+        img.src = path;
+        img.onload = function(){
+            var that = this;
+            // 默认按比例压缩
+            var w = that.width,
+                h = that.height,
+                scale = w / h;
+            w = obj.width || w;
+            h = obj.height || (w / scale);
+            var quality = 0.7;  // 默认图片质量为0.7
+            //生成canvas
+            var canvas = document.createElement('canvas');
+            var ctx = canvas.getContext('2d');
+            // 创建属性节点
+            var anw = document.createAttribute("width");
+            anw.nodeValue = w;
+            var anh = document.createAttribute("height");
+            anh.nodeValue = h;
+            canvas.setAttributeNode(anw);
+            canvas.setAttributeNode(anh);
+            ctx.drawImage(that, 0, 0, w, h);
+            // 图像质量
+            if(obj.quality && obj.quality <= 1 && obj.quality > 0){
+                quality = obj.quality;
+            }
+            // quality值越小，所绘制出的图像越模糊
+            var base64 = canvas.toDataURL('image/jpeg', quality);
+            // 回调函数返回base64的值
+            callback(base64);
+        }
+    };
+
+    /**
+     * 动态的设置input的宽、高及位置，以便覆盖图片，使点击图片等同于点击input,起到点击图片即可以选择图片的效果
+     * @param prevDiv       input父节点的jquery对象
+     */
+    function changeInputFileSize(prevDiv){
+        var windowWidth = window.innerWidth;
+        if(prevDiv){
+            console.log("prevDiv...");
+            console.log(prevDiv.children("img"));
+            //获取页面宽度
+            //获取图片的宽度
+            var imageWidth = prevDiv.children("img")['0'].width;
+            var imageHeight =  prevDiv.children("img")['0'].height;
+            prevDiv.next().css("width",imageWidth);
+            prevDiv.next().css("height",imageHeight);
+            prevDiv.next().css("left",(((windowWidth-imageWidth)/2)-10)+"px");
+            prevDiv.next().next().css("top",(imageHeight+3)+"px");
+            prevDiv.children("img").css("left",(((windowWidth-imageWidth)/2)-10)+"px");
+        }else{
+            $(".uploadimg-input").each(function(){
+                var imageWidth = $(this).parent().children("div").children("img")['0'].scrollWidth;
+                var imageHeight = $(this).parent().children("div").children("img")['0'].scrollHeight;
+                //设置input宽:
+                $(this).css("width",imageWidth);
+                $(this).next().css("top",(imageHeight+2)+"px")
+                $(this).css("height",imageHeight);
+                $(this).css("left",(((window.innerWidth-imageWidth)/2)-10)+"px");
+                $(this).parent().children("div").children("img").css("left",(((windowWidth-imageWidth)/2)-10)+"px");
+            })
+        }
+    };
+
+    /**
+     * 上传图片
+     * @param bl                    图片的blob
+     * @param whichImg              自定义的图片种类，例如身份证正面，反面，营业执照等，
+     * @returns {Promise<any>}
+     */
+    function uploadImg(bl,whichImg){
+        var fd = new FormData();
+        fd.append("file",bl);
+        fd.append("whichImg",whichImg);
+        return new Promise(function(resolve, reject){
+            $.ajax({
+                url: '/upload/image',
+                data:fd,
+                type: 'post',
+                contentType : false,
+                processData: false,
+                contentType: false,
+                success:function(data){
+                    resolve(data);
+                    console.log(data);
+                },fail:function(data){
+                    reject(data);
+                }
+            })
+        })
+    }
+</script>
+</html>

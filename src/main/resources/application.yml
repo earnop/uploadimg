@@ -1,0 +1,32 @@
+server:
+  port: 8080
+  tomcat:
+    uri-encoding: utf-8
+    max-http-post-size: 104857600
+    max-threads: 1000
+    basedir: ${user.home}/tomcat/tmp
+
+spring:
+  http:
+    encoding:
+      charset: UTF-8
+
+
+  thymeleaf:
+    prefix: classpath:/templates/
+    check-template-location: true
+    suffix: .html
+    encoding: UTF-8
+    cache: false
+
+  mvc:
+    servlet:
+      load-on-startup: 100
+
+  servlet:
+    multipart:
+      max-file-size: 30MB
+      max-request-size: 30MB
+
+file:
+  staticAccessPath: /static/**
